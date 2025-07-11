@@ -3,6 +3,12 @@ Module for handling whole brain mesoscale imaging data.
 """
 import os
 from pathlib import Path
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import ndimage
+from dask import array as da
 
 class brain:
     # Attributes
