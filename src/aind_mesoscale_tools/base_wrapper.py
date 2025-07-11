@@ -2,6 +2,7 @@
 Module for handling whole brain mesoscale imaging data.
 """
 import os
+from pathlib import Path
 
 class brain:
     # Attributes
