@@ -98,13 +98,13 @@ class brain:
         self.level = level
         if verbose:
             print(f"Grabbing volumes for level: {level}")
-        self.get_vol()
-    
-    def get_vol(self):
+        self.get_zarr_volume()
+
+    def get_zarr_volume(self):
         # Method to mount volumetric imaging data
         self.vols = {channel: da.from_zarr(str(ch_path), self.level).squeeze() for channel,ch_path in self.ch_paths.items()}
     
-    def orient_vol(self, ch, plane = "coronal", return_labels = False):
+    def orient_zarr_volume(self, ch, plane = "coronal", return_labels = False):
         # Method to orient requested channel volume to a particular plane. Return labels for internal methods, e.g. plot_slice
         if (plane.lower() == "horizontal") | (plane.lower() == "transverse"):
             print_txt = "Plotting horizontal axis, "
@@ -154,7 +154,7 @@ class brain:
         # Method to localize viral injection sites. 
         self.set_zarr_level(level, show_plot)
         # For a given channel, find the center of mass in a span around the brightest point in the volume.
-        ch_vol = self.orient_vol(ch, plane = plane)  # Think about best orientation to save coordinates in
+        ch_vol = self.orient_zarr_volume(ch, plane = plane)  # Think about best orientation to save coordinates in
         pos_max = np.argmax(ch_vol).compute() # Find brightest pixel in entire volume, then convert to index
         indx_max = np.unravel_index(pos_max, ch_vol.shape)
         # Further process on volume centered at brightest point, size governed by span
@@ -185,7 +185,7 @@ class brain:
         
         # Specify resolution level, and then retrieve properly oriented volume
         self.set_zarr_level(level, verbose)
-        [ch_vol, x_label, y_label, print_txt] = self.orient_vol(ch, plane = plane, return_labels = True)
+        [ch_vol, x_label, y_label, print_txt] = self.orient_zarr_volume(ch, plane = plane, return_labels = True)
         
         # Get data indices to be plotted
         if not section:
