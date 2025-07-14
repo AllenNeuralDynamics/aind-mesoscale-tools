@@ -19,14 +19,22 @@ class brain:
     # Initiator
     def __init__(self,sample, level = 3, verbose = True):
         self.sample = str(sample)
-        self.get_path(verbose)
+        self.get_data_paths(verbose)
         self.set_zarr_level(level, verbose)
         self.set_colormaps()
         self.injection_sites = {}
         
     # Methods
-    def get_path(self, verbose):
+    def get_data_paths(self, verbose):
         # Method to get path to whole brain volume data
+        sample_dir = self._find_sample_directory(verbose)
+        self._get_image_volume_paths(sample_dir, verbose)
+        self._get_atlas_transformation_paths(verbose)
+        self._get_cell_segmentation_paths(verbose)
+        self._get_atlas_quantification_paths(verbose)
+    
+    def _find_sample_directory(self, verbose):
+        # Find the root directory for the sample and locate the sample directory
         root_dir = Path('../data')
         root_dir = [file for file in root_dir.iterdir() if self.sample in str(file)]
         
@@ -36,8 +44,8 @@ class brain:
         elif len(root_dir) == 0:
             raise ValueError("Could not find a data directory matching input sample ID.")
         self.root_dir = root_dir[0]
-            
-        # Handle iteration of several formatting conventions
+        
+        # Handle iteration of several formatting conventions ## MTS - Future versions might load metadata to direct loading
         sample_dir = self.root_dir.joinpath('processed', 'stitching', 'OMEZarr')
         if not sample_dir.exists():
             sample_dir = self.root_dir.joinpath('processed', 'OMEZarr')
@@ -45,24 +53,28 @@ class brain:
                 sample_dir = self.root_dir.joinpath("image_tile_fusing","OMEZarr")
         if verbose:
             print(f"Loading data from {sample_dir}")
-        
+        return sample_dir
+    
+    def _get_image_volume_paths(self, sample_dir, verbose):
         # Grab channel, named by excitation
         ch_paths = {exCh.name.split('_')[1]: exCh for exCh in sample_dir.glob('Ex*.zarr')}
         self.channels = list(ch_paths.keys())
         self.ch_paths = ch_paths
         if verbose:
-            print(f"Found the following channels: {self.channels}")
-        
+            print(f"Found image volumes in the following channels: {self.channels}")
+    
+    def _get_atlas_transformation_paths(self, verbose):
         # Grab template based transformations
         transform_dir = self.root_dir.joinpath("image_atlas_alignment")
         self.atlas_channels = [exCh.name.split('_')[1] for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()]
-        self.atlas_use_channel = self.atlas_channels[-1]
+        self.atlas_use_channel = self.atlas_channels[-1] if self.atlas_channels else None
         self.transform_paths = {} # Not yet implemented
         # transform_paths = {exCh.name.split('_')[1]: exCh.joinpath("detected_cells.xml") for exCh in transform_dir.glob('Ex*')}
         if verbose:
             print(f"Found atlas alignment in the following channels: {self.atlas_channels}. Grabbing transforms from: {self.atlas_use_channel} (Not yet implemented)")
-        
-        # Grab cell proposals
+    
+    def _get_cell_segmentation_paths(self, verbose):
+        # Grab cell proposals and classifications
         seg_dir = self.root_dir.joinpath("image_cell_segmentation")
         self.prop_paths = {exCh.name.split('_')[1]: exCh.joinpath("detected_cells.xml") for exCh in seg_dir.glob('Ex*')}
         if verbose:
@@ -72,7 +84,8 @@ class brain:
         self.class_paths = {exCh.name.split('_')[1]: exCh.joinpath("classified_cells.xml") for exCh in seg_dir.glob('Ex*')}
         if verbose:
             print(f"Found cell classifications in the following channels: {list(self.class_paths.keys())}")
-        
+    
+    def _get_atlas_quantification_paths(self, verbose):
         # Grab CCF quantifications
         quant_dir = self.root_dir.joinpath("image_cell_quantification")
         self.quant_paths = {exCh.name.split('_')[1]: exCh.joinpath("cell_count_by_region.csv") for exCh in quant_dir.glob('Ex*')}
