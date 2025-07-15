@@ -151,23 +151,33 @@ class wholebrain_data:
                 colormaps[ch] = sns.blend_palette([base,color_sets[ch]], as_cmap = True)
         self.colormaps = colormaps
         
-    def get_injection_site(self, ch, level = 3, plane = 'sagittal', span = 60, show_plot = True):
+    def get_injection_site(self, ch, level = 3, seed = False, plane = 'coronal', span = 60, verbose = True):
         # Method to localize viral injection sites. 
-        self.set_zarr_level(level, show_plot)
-        # For a given channel, find the center of mass in a span around the brightest point in the volume.
-        ch_vol = self.orient_zarr_volume(ch, plane = plane)  # Think about best orientation to save coordinates in
-        pos_max = np.argmax(ch_vol).compute() # Find brightest pixel in entire volume, then convert to index
-        indx_max = np.unravel_index(pos_max, ch_vol.shape)
-        # Further process on volume centered at brightest point, size governed by span
-        x_slice, y_slice, z_slice = slice(indx_max[0] - span,indx_max[0] + span), slice(indx_max[1] - span,indx_max[1] + span), slice(indx_max[2] - span,indx_max[2] + span)
-        center_vol = ch_vol[x_slice,y_slice,z_slice]
-        # Clip volume to signal for CoM calculation
-        clip_vals = np.quantile(center_vol,[.95,.995])
-        center_vol = center_vol - clip_vals[0] # Set everything below 95% to 0, clip to 95th percentile
-        center_vol = center_vol.clip(0,clip_vals[1] - clip_vals[0])
-        com = np.round(ndimage.center_of_mass(np.array(center_vol)))
+
+        # Check inputs
+        ch = self._check_channel_provided(ch)[0]
+
+        # Specify resolution level, and then retrieve properly oriented volume
+        self.set_zarr_level(level, verbose)
+        ch_vol = self.orient_zarr_volume(ch, plane = plane)
+
+        if seed:
+            # Not yet implemented
+            pass
+        else:
+            # If no seed is provided, find the center of mass around the brightest point in the volume.
+            pos_max = np.argmax(ch_vol).compute() # Find brightest pixel in entire volume, then convert to index
+            indx_max = np.unravel_index(pos_max, ch_vol.shape)
+            # Further process on volume centered at brightest point, size governed by span
+            x_slice, y_slice, z_slice = [slice(indx - span, indx + span) for indx in indx_max]
+            center_vol = ch_vol[x_slice,y_slice,z_slice]
+            # Clip volume to signal for CoM calculation
+            clip_vals = np.quantile(center_vol,[.95,.995])
+            center_vol = center_vol - clip_vals[0] # Set everything below 95% to 0, clip to 95th percentile
+            center_vol = center_vol.clip(0,clip_vals[1] - clip_vals[0])
+            com = np.round(ndimage.center_of_mass(np.array(center_vol)))
         # Plot if requested
-        if show_plot:
+        if verbose:
             plt.imshow(center_vol[com[0],:,:],cmap = self.colormaps[ch],vmax=1200)
             plt.plot(com[2],com[1],'or')
             
@@ -346,6 +356,7 @@ class wholebrain_data:
         """
         # Handle empty/None input - use default channel
         if not ch:
+            print(f"No channel provided, using {min(self.channels)}")
             return [min(self.channels)]
         
         # Handle single values (int or str)
