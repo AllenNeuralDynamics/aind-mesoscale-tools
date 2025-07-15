@@ -335,12 +335,12 @@ class brain:
         if (not extent) | (len(extent) != 4):
             if extent:
                 print("Unexpected extent format, using full volume dimensions.")
-            extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
+            extent = np.array([0, ch_vol.shape[2], 0, ch_vol.shape[1]]) * self.zarr_multiple[level]
 
         else: # check that extent is within bounds of volume
             extent_indices = self._convert_zarr_index(extent, level)
             if extent_indices[0] < 0 or extent_indices[1] > ch_vol.shape[2] or \
                extent_indices[2] < 0 or extent_indices[3] > ch_vol.shape[1]:
                 print("Extent indices out of bounds, using full volume dimensions.")
-                extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
+                extent = np.array([0, ch_vol.shape[2], 0, ch_vol.shape[1]]) * self.zarr_multiple[level]
         return extent
