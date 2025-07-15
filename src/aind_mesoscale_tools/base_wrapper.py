@@ -333,7 +333,7 @@ class brain:
         else: # check that extent is within bounds of volume
             extent_indices = self._convert_zarr_index(extent, level)
             if not (0 <= extent_indices[0] < extent_indices[1] <= ch_vol.shape[2] and \
-                    0 <= extent_indices[2] < extent_indices[3] <= ch_vol.shape[1]):
+                    0 <= extent_indices[3] < extent_indices[2] <= ch_vol.shape[1]):
                 print("Extent indices out of bounds, using full volume dimensions.")
                 extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
         return extent
