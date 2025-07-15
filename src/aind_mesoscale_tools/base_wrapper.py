@@ -11,7 +11,7 @@ import seaborn as sns
 from scipy import ndimage
 from dask import array as da
 
-class brain:
+class wholebrain_data:
     # Attributes
     base_resolution = [1.8, 1.8, 2] # microns
     zarr_multiple = {j:2**j for j in range(5)} # compression at each zarr level
