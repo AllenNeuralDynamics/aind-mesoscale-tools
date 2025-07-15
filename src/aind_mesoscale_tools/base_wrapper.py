@@ -179,20 +179,17 @@ class brain:
     def plot_slice(self,ch = [],plane = "coronal",section = [], extent = [], level = 3, vmin = 0, vmax = 600, alpha = 1, ticks = True, verbose = True):
         # Method to plot a particular slice
         
-        # If no channel is provided, plot shortest wavelength
-        if not ch:
-            ch = min(self.channels)
+        # Check inputs
+        ch = self._check_channel_provided(ch)
         
         # Specify resolution level, and then retrieve properly oriented volume
         self.set_zarr_level(level, verbose)
         [ch_vol, x_label, y_label, print_txt] = self.orient_zarr_volume(ch, plane = plane, return_labels = True)
         
         # Get data indices to be plotted
-        if not section:
-            section_index = int(ch_vol.shape[0] / 2)
-            section = section_index * self.zarr_multiple[level]
-        else: # otherwise convert microns to indices
-            section_index = int(section / self.zarr_multiple[level])
+        section = self._check_section_provided(section, ch_vol, level)
+        section_index = self._convert_section_to_index(section, level)
+        
         if (not extent) | len(extent) != 4:
             extent_indices = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0])
             extent = extent_indices*self.zarr_multiple[level]
@@ -214,9 +211,8 @@ class brain:
     def plot_point(self, cst, ch: list = [], span = 20, vmin = 0, vmax = 600):
         # Method to plot a given point in 3 planes, specified by variable cst (coronal, sagittal, transverse).
         
-        # If no channel is provided, plot shortest wavelength
-        if not ch:
-            ch = min(self.channels)
+        # Get default channel if none is provided
+        ch = self._check_channel_provided(ch)
         
         if span > 300:
             level = 1
@@ -284,3 +280,41 @@ class brain:
                 loc_cells[:,i] = loc_cells[:,i].clip(0,dim-1)
             location_dict[channel] = loc_cells
         return location_dict
+
+    def get_max_intensity_projection(self,ch: list[str], section: int, plane: str = "coronal", span: int = 25, level: int = 3) -> dict:
+        # Method to get maximum intensity projection of a channel in a given plane.
+        xSlice = slice(section - span, section + span)
+
+        # Get volumes
+        self.set_zarr_level(level = level)
+        mip_dict = {}
+        for channel in ch:
+            ch_vol = self.orient_zarr_volume(channel,plane = plane)
+            mip_dict[channel] = np.max(ch_vol[xSlice,:,:], axis = 0)
+
+        return mip_dict
+
+    def _check_channel_provided(self, ch: str) -> str:
+        """
+        Helper method to check if a channel is provided.
+        If no channel is provided, returns the shortest wavelength channel.
+        
+        """
+        if not ch:
+            return min(self.channels)
+        return ch
+    
+    def _check_section_provided(self, section: int, ch_vol: da.Array, level: int) -> int:
+        """
+        Helper method to check if a section index is provided.
+        If no section is provided, uses the midpoint of the volume.
+        """
+        if not section:
+            return int(self.zarr_multiple[level] * ch_vol.shape[0] / 2)
+        return section
+    
+    def _convert_section_to_index(self, section: int, level: int) -> int:
+        """
+        Helper method to convert a zeroth zarr level index to indices of an arbitrary level.
+        """
+        return int(section / self.zarr_multiple[level])
