@@ -190,17 +190,10 @@ class brain:
         # Get data indices to be plotted
         section = self._check_section_provided(section, ch_vol, level)
         section_index = self._convert_zarr_index(section, level)
-        
-        # if (not extent) | len(extent) != 4:
-        #     extent_indices = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0])
-        #     extent = extent_indices*self.zarr_multiple[level]
-        # else: #interpret extent requests as microns, convert to indices
-        #     extent_indices = np.round(np.array(extent) / self.zarr_multiple[level])
 
         # Get extent indices for plotting
         extent = self._check_extent_provided(extent, ch_vol, level)
         extent_indices = self._convert_zarr_index(extent, level)
-
 
         if verbose:
             print(print_txt + 'secion: ' + str(section) + ' (level ' + str(level) + ' index: ' + str(section_index) + ')')
@@ -335,12 +328,12 @@ class brain:
         if (not extent) | (len(extent) != 4):
             if extent:
                 print("Unexpected extent format, using full volume dimensions.")
-            extent = np.array([0, ch_vol.shape[2], 0, ch_vol.shape[1]]) * self.zarr_multiple[level]
+            extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
 
         else: # check that extent is within bounds of volume
             extent_indices = self._convert_zarr_index(extent, level)
-            if extent_indices[0] < 0 or extent_indices[1] > ch_vol.shape[2] or \
-               extent_indices[2] < 0 or extent_indices[3] > ch_vol.shape[1]:
+            if not (0 <= extent_indices[0] < extent_indices[1] <= ch_vol.shape[2] and \
+                    0 <= extent_indices[2] < extent_indices[3] <= ch_vol.shape[1]):
                 print("Extent indices out of bounds, using full volume dimensions.")
-                extent = np.array([0, ch_vol.shape[2], 0, ch_vol.shape[1]]) * self.zarr_multiple[level]
+                extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
         return extent
