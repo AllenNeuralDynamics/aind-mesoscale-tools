@@ -181,7 +181,7 @@ class brain:
         # Method to plot a particular slice
         
         # Check inputs
-        ch = self._check_channel_provided(ch)
+        ch = self._check_channel_provided(ch)[0]
         
         # Specify resolution level, and then retrieve properly oriented volume
         self.set_zarr_level(level, verbose)
@@ -212,7 +212,7 @@ class brain:
         # Method to plot a given point in 3 planes, specified by variable cst (coronal, sagittal, transverse).
         
         # Get default channel if none is provided
-        ch = self._check_channel_provided(ch)
+        ch = self._check_channel_provided(ch)[0]
         
         if span > 300:
             level = 1
@@ -293,16 +293,6 @@ class brain:
             mip_dict[channel] = np.max(ch_vol[xSlice,:,:], axis = 0)
 
         return mip_dict
-
-    def _check_channel_provided(self, ch: str) -> str:
-        """
-        Helper method to check if a channel is provided.
-        If no channel is provided, returns the shortest wavelength channel.
-        
-        """
-        if not ch:
-            return min(self.channels)
-        return ch
     
     def _check_section_provided(self, section: int, ch_vol: da.Array, level: int) -> int:
         """
@@ -338,7 +328,7 @@ class brain:
                 extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
         return extent
     
-    def _normalize_channel_input(self, ch):
+    def _check_channel_provided(self, ch):
         """
         Helper method to clean channel inputs to a list of strings.
         If no channel is provided, returns the shortest wavelength channel.
