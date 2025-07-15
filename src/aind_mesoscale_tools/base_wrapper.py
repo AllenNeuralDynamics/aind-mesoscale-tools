@@ -3,6 +3,7 @@ Module for handling whole brain mesoscale imaging data.
 """
 import os
 from pathlib import Path
+from unittest import result
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -188,13 +189,19 @@ class brain:
         
         # Get data indices to be plotted
         section = self._check_section_provided(section, ch_vol, level)
-        section_index = self._convert_section_to_index(section, level)
+        section_index = self._convert_zarr_index(section, level)
         
-        if (not extent) | len(extent) != 4:
-            extent_indices = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0])
-            extent = extent_indices*self.zarr_multiple[level]
-        else: #interpret extent requests as microns, convert to indices
-            extent_indices = np.round(np.array(extent) / self.zarr_multiple[level])
+        # if (not extent) | len(extent) != 4:
+        #     extent_indices = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0])
+        #     extent = extent_indices*self.zarr_multiple[level]
+        # else: #interpret extent requests as microns, convert to indices
+        #     extent_indices = np.round(np.array(extent) / self.zarr_multiple[level])
+
+        # Get extent indices for plotting
+        extent = self._check_extent_provided(extent, ch_vol, level)
+        extent_indices = self._convert_zarr_index(extent, level)
+
+
         if verbose:
             print(print_txt + 'secion: ' + str(section) + ' (level ' + str(level) + ' index: ' + str(section_index) + ')')
             
@@ -313,8 +320,27 @@ class brain:
             return int(self.zarr_multiple[level] * ch_vol.shape[0] / 2)
         return section
     
-    def _convert_section_to_index(self, section: int, level: int) -> int:
+    def _convert_zarr_index(self, input: int, level: int) -> int:
         """
         Helper method to convert a zeroth zarr level index to indices of an arbitrary level.
         """
-        return int(section / self.zarr_multiple[level])
+        output = np.asarray(input) / self.zarr_multiple[level]
+        # Return scalar int if input was scalar, else ndarray of ints
+        return int(output) if np.isscalar(input) else output.astype(int)
+
+    def _check_extent_provided(self, extent: np.ndarray, ch_vol: da.Array, level: int) -> np.ndarray:
+        """
+        Helper method to check extent indices for plotting.
+        """
+        if (not extent) | (len(extent) != 4):
+            if extent:
+                print("Unexpected extent format, using full volume dimensions.")
+            extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
+
+        else: # check that extent is within bounds of volume
+            extent_indices = self._convert_zarr_index(extent, level)
+            if extent_indices[0] < 0 or extent_indices[1] > ch_vol.shape[2] or \
+               extent_indices[2] < 0 or extent_indices[3] > ch_vol.shape[1]:
+                print("Extent indices out of bounds, using full volume dimensions.")
+                extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
+        return extent
