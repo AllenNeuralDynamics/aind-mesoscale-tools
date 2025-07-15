@@ -337,3 +337,35 @@ class brain:
                 print("Extent indices out of bounds, using full volume dimensions.")
                 extent = np.array([0, ch_vol.shape[2], ch_vol.shape[1], 0]) * self.zarr_multiple[level]
         return extent
+    
+    def _normalize_channel_input(self, ch):
+        """
+        Helper method to clean channel inputs to a list of strings.
+        If no channel is provided, returns the shortest wavelength channel.
+        
+        Args:
+            ch: Channel input that can be:
+                - int: single channel as integer
+                - str: single channel as string  
+                - list[int]: list of channels as integers
+                - list[str]: list of channels as strings
+                - empty list/None: will use default channel
+                
+        Returns:
+            list[str]: List of channel names as strings
+        """
+        # Handle empty/None input - use default channel
+        if not ch:
+            return [min(self.channels)]
+        
+        # Handle single values (int or str)
+        if isinstance(ch, (int, str)):
+            return [str(ch)]
+        
+        # Handle lists
+        if isinstance(ch, list):
+            # Convert all elements to strings
+            return [str(channel) for channel in ch]
+        
+        # Fallback for unexpected types
+        return [str(ch)]
