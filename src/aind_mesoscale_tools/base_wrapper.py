@@ -193,11 +193,9 @@ class wholebrain_data:
             coord = indx_max
             slice_dict = {}
 
-        # Plot if requested
+        # Plot validation if requested
         if verbose:
-            # Additional plotting functions to be added
-            # plt.imshow(center_vol[com[0],:,:],cmap = self.colormaps[ch],vmax=1200)
-            # plt.plot(com[2],com[1],'or')
+            self.plot_injection_site(ch)
             pass
             
         self.injection_sites[ch] = {"plane":plane, "level":level, "coordinates":coord, "seed":seed, "center":center, "slice_dict": slice_dict, "span":span}
@@ -235,6 +233,28 @@ class wholebrain_data:
             plt.ylabel(y_label)
         else:
             plt.tick_params(left = False, labelleft = False, bottom = False, labelbottom = False)
+
+    def plot_injection_site(self, ch):
+        # Function to plot the injection site for a given channel.
+
+        # Check inputs
+        ch = self._check_channel_provided(ch)[0]
+
+        # Check if injection site exists
+        if ch not in self.injection_sites:
+            print(f"No injection site found for channel {ch}. Running get_injection_site first.")
+            self.get_injection_site(ch, verbose= False)
+
+        # Load parameters from injection site estimation
+        site_info = self.injection_sites[ch]
+        level = site_info["level"]
+        inj_coordinate = self._convert_zarr_index(site_info["coordinates"], level)
+
+        # Do plotting
+        self.plot_slice(ch = ch, plane = site_info["plane"], level = level, section = inj_coordinate[0])
+        plt.plot(inj_coordinate[2], inj_coordinate[1], '+', markersize = 5, markeredgewidth = 2,
+                 color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
+
 
     def plot_point(self, cst, ch: list = [], span = 20, vmin = 0, vmax = 600):
         # Method to plot a given point in 3 planes, specified by variable cst (coronal, sagittal, transverse).
