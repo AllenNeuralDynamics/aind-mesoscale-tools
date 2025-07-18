@@ -193,12 +193,14 @@ class wholebrain_data:
             coord = indx_max
             slice_dict = {}
 
+        # Save injection site and estimation parameters to data object
+        self.injection_sites[ch] = {"plane":plane, "level":level, "coordinates":coord, "seed":seed, "center":center, "slice_dict": slice_dict, "span":span}
+        
         # Plot validation if requested
         if verbose:
             self.plot_injection_site(ch)
             pass
             
-        self.injection_sites[ch] = {"plane":plane, "level":level, "coordinates":coord, "seed":seed, "center":center, "slice_dict": slice_dict, "span":span}
         # Add fitting function / volume estimation to another function
         return self.injection_sites[ch]
         
@@ -241,7 +243,7 @@ class wholebrain_data:
         ch = self._check_channel_provided(ch)[0]
 
         # Check if injection site exists
-        if ch not in self.injection_sites:
+        if ch not in self.injection_sites.keys():
             print(f"No injection site found for channel {ch}. Running get_injection_site first.")
             self.get_injection_site(ch, verbose= False)
 
