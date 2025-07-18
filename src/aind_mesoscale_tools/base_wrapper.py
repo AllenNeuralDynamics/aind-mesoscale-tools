@@ -11,6 +11,8 @@ import seaborn as sns
 from scipy import ndimage
 from dask import array as da
 
+from .utils import gaussian_3d_rotated
+
 class wholebrain_data:
     # Attributes
     base_resolution = [1.8, 1.8, 2] # microns
@@ -107,6 +109,11 @@ class wholebrain_data:
     
     def orient_zarr_volume(self, ch, plane = "coronal", return_labels = False):
         # Method to orient requested channel volume to a particular plane. Return labels for internal methods, e.g. plot_slice
+
+        # Check inputs
+        ch = self._check_channel_provided(ch)[0]
+
+        # Set axis and labels based on plane. Adjust later to read metadata.
         if (plane.lower() == "horizontal") | (plane.lower() == "transverse"):
             print_txt = "Plotting horizontal axis, "
             axis = 0
@@ -151,7 +158,7 @@ class wholebrain_data:
                 colormaps[ch] = sns.blend_palette([base,color_sets[ch]], as_cmap = True)
         self.colormaps = colormaps
         
-    def get_injection_site(self, ch, level = 3, seed = False, plane = 'coronal', span = 60, verbose = True):
+    def get_injection_site(self, ch, level = 3, seed = False, center = False, plane = 'coronal', span = 60, verbose = True):
         # Method to localize viral injection sites. 
 
         # Check inputs
@@ -162,29 +169,40 @@ class wholebrain_data:
         ch_vol = self.orient_zarr_volume(ch, plane = plane)
 
         if seed:
-            # Not yet implemented
-            pass
+            # Manual seed provided, convert to appropriate zarr level
+            indx_max = self._convert_zarr_index(seed, level) # Convert seed to index
+            
         else:
-            # If no seed is provided, find the center of mass around the brightest point in the volume.
+            # If no seed is provided, find brightest pixel in entire volume, then convert to index
             pos_max = np.argmax(ch_vol).compute() # Find brightest pixel in entire volume, then convert to index
             indx_max = np.unravel_index(pos_max, ch_vol.shape)
+        
+        if center:
             # Further process on volume centered at brightest point, size governed by span
-            x_slice, y_slice, z_slice = [slice(indx - span, indx + span) for indx in indx_max]
+            x_slice, y_slice, z_slice = [slice(max(0, indx - span), min(ch_vol.shape[i], indx + span)) for i, indx in enumerate(indx_max)]
+            slice_dict = {"x": x_slice, "y": y_slice, "z": z_slice} # save slice dict for later indexing
             center_vol = ch_vol[x_slice,y_slice,z_slice]
+
             # Clip volume to signal for CoM calculation
             clip_vals = np.quantile(center_vol,[.95,.995])
             center_vol = center_vol - clip_vals[0] # Set everything below 95% to 0, clip to 95th percentile
             center_vol = center_vol.clip(0,clip_vals[1] - clip_vals[0])
             com = np.round(ndimage.center_of_mass(np.array(center_vol)))
+            coord = [x_slice.start, y_slice.start, z_slice.start] + com
+        else:
+            coord = indx_max
+            slice_dict = {}
+
         # Plot if requested
         if verbose:
-            plt.imshow(center_vol[com[0],:,:],cmap = self.colormaps[ch],vmax=1200)
-            plt.plot(com[2],com[1],'or')
+            # Additional plotting functions to be added
+            # plt.imshow(center_vol[com[0],:,:],cmap = self.colormaps[ch],vmax=1200)
+            # plt.plot(com[2],com[1],'or')
+            pass
             
-        coord = com - span + indx_max
-        self.injection_sites[ch] = {"plane":plane, "level":level, "span":span, "coordinates":coord}
-        # Edit later to include fitting function
-        return center_vol
+        self.injection_sites[ch] = {"plane":plane, "level":level, "coordinates":coord, "seed":seed, "center":center, "slice_dict": slice_dict, "span":span}
+        # Add fitting function / volume estimation to another function
+        return self.injection_sites[ch]
         
         
     def plot_slice(self,ch = [],plane = "coronal",section = [], extent = [], level = 3, vmin = 0, vmax = 600, alpha = 1, ticks = True, verbose = True):
@@ -293,6 +311,11 @@ class wholebrain_data:
 
     def get_max_intensity_projection(self,ch: list[str], section: int, plane: str = "coronal", span: int = 25, level: int = 3) -> dict:
         # Method to get maximum intensity projection of a channel in a given plane.
+
+        # Check inputs
+        ch = self._check_channel_provided(ch)
+
+        # Use input slice conditions
         xSlice = slice(section - span, section + span)
 
         # Get volumes
