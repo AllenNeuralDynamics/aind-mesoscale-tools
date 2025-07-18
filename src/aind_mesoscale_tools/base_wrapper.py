@@ -170,7 +170,7 @@ class wholebrain_data:
 
         if seed:
             # Manual seed provided, convert to appropriate zarr level
-            indx_max = self._convert_zarr_index(seed, level) # Convert seed to index
+            indx_max = self._convert_zarr_index(seed, output_level = level) # Convert seed to index
             
         else:
             # If no seed is provided, find brightest pixel in entire volume, then convert to index
@@ -215,11 +215,11 @@ class wholebrain_data:
         
         # Get data indices to be plotted
         section = self._check_section_provided(section, ch_vol, level)
-        section_index = self._convert_zarr_index(section, level)
+        section_index = self._convert_zarr_index(section, output_level = level)
 
         # Get extent indices for plotting
         extent = self._check_extent_provided(extent, ch_vol, level)
-        extent_indices = self._convert_zarr_index(extent, level)
+        extent_indices = self._convert_zarr_index(extent, output_level = level)
 
         if verbose:
             print(print_txt + 'secion: ' + str(section) + ' (level ' + str(level) + ' index: ' + str(section_index) + ')')
@@ -248,7 +248,7 @@ class wholebrain_data:
         # Load parameters from injection site estimation
         site_info = self.injection_sites[ch]
         level = site_info["level"]
-        inj_coordinate = self._convert_zarr_index(site_info["coordinates"], level)
+        inj_coordinate = self._convert_zarr_index(site_info["coordinates"], output_level = 0, input_level = level) # Convert coordinates to index
 
         # Do plotting
         self.plot_slice(ch = ch, plane = site_info["plane"], level = level, section = inj_coordinate[0])
@@ -356,11 +356,11 @@ class wholebrain_data:
             return int(self.zarr_multiple[level] * ch_vol.shape[0] / 2)
         return section
     
-    def _convert_zarr_index(self, input: int, level: int) -> int:
+    def _convert_zarr_index(self, input: int, output_level: int, input_level: int = 0) -> int:
         """
-        Helper method to convert a zeroth zarr level index to indices of an arbitrary level.
+        Helper method to convert between arbitrary zarr levels.
         """
-        output = np.asarray(input) / self.zarr_multiple[level]
+        output = self.zarr_multiple[input_level] * np.asarray(input) / self.zarr_multiple[output_level]
         # Return scalar int if input was scalar, else ndarray of ints
         return int(output) if np.isscalar(input) else output.astype(int)
 
