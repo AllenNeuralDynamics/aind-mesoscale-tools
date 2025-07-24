@@ -170,7 +170,7 @@ class wholebrain_data:
 
         if seed:
             # Manual seed provided, convert to appropriate zarr level
-            indx_max = self._convert_zarr_index(seed, output_level = level) # Convert seed to index
+            indx_max = tuple(self._convert_zarr_index(seed, output_level = level)) # Convert seed to index
             
         else:
             # If no seed is provided, find brightest pixel in entire volume, then convert to index
