@@ -327,13 +327,17 @@ class wholebrain_data:
         
     def get_atlas_aligned_cells(self, ch: list):
         # Method to retrieve and format CCF transformed coordinates of segemented cells
+
+        # Get default channel if none is provided
+        ch = self._check_channel_provided(ch)
+
         ccf_dim = [528, 320, 456]
         location_dict = {}
         for channel in ch:
             loc_cells_df = pd.read_xml(self.ccf_cells_paths[channel],xpath = "//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
-            loc_cells = loc_cells_df.to_numpy() # Cells are output in [ML, DV, AP]
-            # loc_cells[:,:] = loc_cells[:,[2,1,0]] # Rearrange indices to be AP, DV, ML
-            for i, dim in enumerate(ccf_dim): # Ensure cells fall within bounds of CCF annotation volume
+            loc_cells = loc_cells_df.to_numpy() # Cells are output in [AP, DV, ML] ### NOTE, some older versions are oriented differently
+            # Ensure cells fall within bounds of CCF annotation volume
+            for i, dim in enumerate(ccf_dim):
                 loc_cells[:,i] = loc_cells[:,i].clip(0,dim-1)
             location_dict[channel] = loc_cells
         return location_dict
