@@ -253,9 +253,16 @@ class wholebrain_data:
         inj_coordinate = self._convert_zarr_index(site_info["coordinates"], output_level = 0, input_level = level) # Convert coordinates to index
 
         # Do plotting
-        self.plot_slice(ch = ch, plane = site_info["plane"], level = level, section = inj_coordinate[0])
-        plt.plot(inj_coordinate[2], inj_coordinate[1], '+', markersize = 5, markeredgewidth = 2,
-                 color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
+        plt.figure(figsize = (12,4.8))
+        indx_calls = [[2, 1], [2, 0], [0, 1]]
+        for i, plane in enumerate(["coronal","horizontal","sagittal"]):
+            ax = plt.subplot(1,3,i + 1)
+            ax.set_box_aspect(1)
+            ax.set_facecolor('black')
+            self.plot_slice(ch = ch, plane = plane, level = level, section = inj_coordinate[i])
+            plt.plot(inj_coordinate[indx_calls[i][0]], inj_coordinate[indx_calls[i][1]], '+', markersize = 5, markeredgewidth = 2, 
+                     color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
+        plt.tight_layout()
 
 
     def plot_point(self, cst, ch: list = [], span = 20, vmin = 0, vmax = 600):
