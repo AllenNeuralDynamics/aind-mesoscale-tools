@@ -19,6 +19,7 @@ class wholebrain_data:
     zarr_multiple = {j:2**j for j in range(5)} # compression at each zarr level
     ccf_dimensions = [528, 320, 456] # 25 um CCF atlas dimensions in voxels
     injection_sites = {} # injection site information, populated by get_injection_sites call
+    atlas_quantifications = {} # atlas quantification information, populated by get_atlas_aligned_quantification call
     
     # Initiator
     def __init__(self,sample, level = 3, verbose = True):
@@ -326,7 +327,7 @@ class wholebrain_data:
         ng_json = pd.read_json(link_path, orient = 'index')
         print(ng_json[0]["ng_link"])
         
-    def get_atlas_aligned_cells(self, ch: list):
+    def get_atlas_aligned_cells(self, ch: list, clip_locations: bool = False):
         # Method to retrieve and format CCF transformed coordinates of segemented cells
 
         # Get default channel if none is provided
@@ -336,9 +337,10 @@ class wholebrain_data:
         for channel in ch:
             loc_cells_df = pd.read_xml(self.ccf_cells_paths[channel],xpath = "//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
             loc_cells = loc_cells_df.to_numpy() # Cells are output in [AP, DV, ML] ### NOTE, some older versions are oriented differently
-            # Ensure cells fall within bounds of CCF annotation volume
-            for i, dim in enumerate(self.ccf_dimensions):
-                loc_cells[:,i] = loc_cells[:,i].clip(0,dim-1)
+            if clip_locations:
+                # Ensure cells fall within bounds of CCF annotation volume
+                for i, dim in enumerate(self.ccf_dimensions):
+                    loc_cells[:,i] = loc_cells[:,i].clip(0,dim-1)
             location_dict[channel] = loc_cells
         return location_dict
     
@@ -352,7 +354,35 @@ class wholebrain_data:
         for channel in ch:
             quant_df = pd.read_csv(self.quant_paths[channel])
             quant_dict[channel] = quant_df
+        # Save quantifications to class attribute for later use
+        self.atlas_quantifications = quant_dict
         return quant_dict
+    
+    def get_quantification_by_region(self, ch: list, region: list[str], density: bool = False):
+        # Method to retrieve quantification for a particular region across specified channels.
+
+        # Get default channel if none is provided
+        ch = self._check_channel_provided(ch)[0]
+
+        # Check if atlas quantifications are already loaded, if not, load them
+        if ch not in self.atlas_quantifications.keys():
+            print(f"No quantifications found for channel {ch}. Running get_atlas_aligned_quantification first.")
+            self.get_atlas_aligned_quantification(ch)
+
+        # Check if region is a list, if not, convert to list
+        if isinstance(region, str):
+            region = [region]
+        elif not isinstance(region, list):
+            raise ValueError("Region must be a string or a list of strings.")
+        
+        # Retrieve quantification for the specified region
+        quant_df = self.atlas_quantifications[]
+        if density:
+            region_df = quant_df.loc[quant_df["Acronym"].isin(region),["Acronym","Left_Density","Right_Density","Total_Density"]].set_index("Acronym")
+        else:
+            region_df = quant_df.loc[quant_df["Acronym"].isin(region),["Acronym","Left","Right","Total"]].set_index("Acronym")
+       
+        return region_df
 
     def get_max_intensity_projection(self,ch: list[str], section: int, plane: str = "coronal", span: int = 25, level: int = 3) -> dict:
         # Method to get maximum intensity projection of a channel in a given plane.
