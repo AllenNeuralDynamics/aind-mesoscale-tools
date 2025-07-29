@@ -376,7 +376,7 @@ class wholebrain_data:
             raise ValueError("Region must be a string or a list of strings.")
         
         # Retrieve quantification for the specified region
-        quant_df = self.atlas_quantifications[]
+        quant_df = self.atlas_quantifications[ch]
         if density:
             region_df = quant_df.loc[quant_df["Acronym"].isin(region),["Acronym","Left_Density","Right_Density","Total_Density"]].set_index("Acronym")
         else:
