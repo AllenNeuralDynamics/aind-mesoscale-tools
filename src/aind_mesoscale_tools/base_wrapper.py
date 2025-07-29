@@ -341,6 +341,18 @@ class wholebrain_data:
                 loc_cells[:,i] = loc_cells[:,i].clip(0,dim-1)
             location_dict[channel] = loc_cells
         return location_dict
+    
+    def get_atlas_aligned_quantification(self, ch: list):
+        # Method to retrieve quantifications of cell counts by CCF region.
+
+        # Get default channel if none is provided
+        ch = self._check_channel_provided(ch)
+
+        quant_dict = {}
+        for channel in ch:
+            quant_df = pd.read_csv(self.quant_paths[channel])
+            quant_dict[channel] = quant_df
+        return quant_dict
 
     def get_max_intensity_projection(self,ch: list[str], section: int, plane: str = "coronal", span: int = 25, level: int = 3) -> dict:
         # Method to get maximum intensity projection of a channel in a given plane.
