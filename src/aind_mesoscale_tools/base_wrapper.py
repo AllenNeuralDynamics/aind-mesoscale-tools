@@ -17,6 +17,7 @@ class wholebrain_data:
     # Attributes
     base_resolution = [1.8, 1.8, 2] # microns
     zarr_multiple = {j:2**j for j in range(5)} # compression at each zarr level
+    ccf_dimensions = [528, 320, 456] # 25 um CCF atlas dimensions in voxels
     injection_sites = {} # injection site information, populated by get_injection_sites call
     
     # Initiator
@@ -331,13 +332,12 @@ class wholebrain_data:
         # Get default channel if none is provided
         ch = self._check_channel_provided(ch)
 
-        ccf_dim = [528, 320, 456]
         location_dict = {}
         for channel in ch:
             loc_cells_df = pd.read_xml(self.ccf_cells_paths[channel],xpath = "//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
             loc_cells = loc_cells_df.to_numpy() # Cells are output in [AP, DV, ML] ### NOTE, some older versions are oriented differently
             # Ensure cells fall within bounds of CCF annotation volume
-            for i, dim in enumerate(ccf_dim):
+            for i, dim in enumerate(self.ccf_dimensions):
                 loc_cells[:,i] = loc_cells[:,i].clip(0,dim-1)
             location_dict[channel] = loc_cells
         return location_dict
