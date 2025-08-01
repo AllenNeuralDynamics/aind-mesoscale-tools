@@ -390,8 +390,11 @@ class wholebrain_data:
         # Check inputs
         ch = self._check_channel_provided(ch)
 
+        # Get data indices to be plotted
+        section_index = self._convert_zarr_index(section, output_level = level)
+
         # Use input slice conditions
-        xSlice = slice(section - span, section + span)
+        xSlice = slice(section_index - span, section_index + span)
 
         # Get volumes
         self.set_zarr_level(level = level)
