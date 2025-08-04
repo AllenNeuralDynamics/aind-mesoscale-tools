@@ -246,7 +246,7 @@ class wholebrain_data:
 
         # Check if injection site exists
         if ch not in self.injection_sites.keys():
-            print(f"No injection site found for channel {ch}. Running get_injection_site first.")
+            print(f"No injection site found for channel {ch}. Running get_injection_site with default parameters first.")
             self.get_injection_site(ch, verbose= False)
 
         # Load parameters from injection site estimation
@@ -326,6 +326,22 @@ class wholebrain_data:
         # link_path =self.root_dir.joinpath("image_cell_segmentation/Ex_561_Em_593/visualization/neuroglancer_config.json")
         ng_json = pd.read_json(link_path, orient = 'index')
         print(ng_json[0]["ng_link"])
+
+    def get_proposed_cells(self, ch: list):
+        # Method to retrieve and format proposed cell coordinates from segmentation XML files.
+
+        # Get default channel if none is provided
+        ch = self._check_channel_provided(ch)
+
+        location_dict = {}
+        for channel in ch:
+            prop_cells_df = pd.read_xml(self.prop_paths[channel],xpath = "//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
+            loc_cells = prop_cells_df.to_numpy()
+            location_dict[channel] = loc_cells
+        # Save proposed cells to class attribute for later use
+        self.proposed_cells = location_dict 
+
+        return location_dict
         
     def get_atlas_aligned_cells(self, ch: list, clip_locations: bool = False):
         # Method to retrieve and format CCF transformed coordinates of segemented cells
