@@ -190,7 +190,7 @@ class wholebrain_data:
             center_vol = center_vol - clip_vals[0] # Set everything below 95% to 0, clip to 95th percentile
             center_vol = center_vol.clip(0,clip_vals[1] - clip_vals[0])
             com = np.round(ndimage.center_of_mass(np.array(center_vol)))
-            coord = [x_slice.start, y_slice.start, z_slice.start] + com
+            coord = tuple([x_slice.start, y_slice.start, z_slice.start] + com)
         else:
             coord = indx_max
             slice_dict = {}
