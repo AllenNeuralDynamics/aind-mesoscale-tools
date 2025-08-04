@@ -238,7 +238,7 @@ class wholebrain_data:
         else:
             plt.tick_params(left = False, labelleft = False, bottom = False, labelbottom = False)
 
-    def plot_injection_site(self, ch):
+    def plot_injection_site(self, ch, vmax = 600):
         # Function to plot the injection site for a given channel.
 
         # Check inputs
@@ -261,7 +261,7 @@ class wholebrain_data:
             ax = plt.subplot(1,3,i + 1)
             ax.set_box_aspect(1)
             ax.set_facecolor('black')
-            self.plot_slice(ch = ch, plane = plane, level = level, section = inj_coordinate[i])
+            self.plot_slice(ch = ch, plane = plane, level = level, section = inj_coordinate[i], vmax = vmax)
             plt.plot(inj_coordinate[indx_calls[i][0]], inj_coordinate[indx_calls[i][1]], '+', markersize = 5, markeredgewidth = 2, 
                      color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
         plt.tight_layout()
@@ -406,8 +406,11 @@ class wholebrain_data:
         # Check inputs
         ch = self._check_channel_provided(ch)
 
+        # Get data indices to be plotted
+        section_index = self._convert_zarr_index(section, output_level = level)
+
         # Use input slice conditions
-        xSlice = slice(section - span, section + span)
+        xSlice = slice(section_index - span, section_index + span)
 
         # Get volumes
         self.set_zarr_level(level = level)
