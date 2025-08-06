@@ -160,8 +160,9 @@ class wholebrain_data:
                 colormaps[ch] = sns.blend_palette([base,color_sets[ch]], as_cmap = True)
         self.colormaps = colormaps
         
-    def get_injection_site(self, ch, level = 3, seed = False, center = False, plane = 'coronal', span = 60, verbose = True):
+    def get_injection_site(self, ch, level = 3, seed = False, center = False, plane = 'coronal', center_span = 60, center_quantile = [.95, .995], verbose = True):
         # Method to localize viral injection sites. 
+        # Center quantile should be a list of two values, e.g. [.95, .995] to clip the volume to the 95th and 99.5th percentiles.
 
         # Check inputs
         ch = self._check_channel_provided(ch)[0]
@@ -181,13 +182,13 @@ class wholebrain_data:
         
         if center:
             # Further process on volume centered at brightest point, size governed by span
-            x_slice, y_slice, z_slice = [slice(max(0, indx - span), min(ch_vol.shape[i], indx + span)) for i, indx in enumerate(indx_max)]
+            x_slice, y_slice, z_slice = [slice(max(0, indx - center_span), min(ch_vol.shape[i], indx + center_span)) for i, indx in enumerate(indx_max)]
             slice_dict = {"x": x_slice, "y": y_slice, "z": z_slice} # save slice dict for later indexing
             center_vol = ch_vol[x_slice,y_slice,z_slice]
 
             # Clip volume to signal for CoM calculation
-            clip_vals = np.quantile(center_vol,[.95,.995])
-            center_vol = center_vol - clip_vals[0] # Set everything below 95% to 0, clip to 95th percentile
+            clip_vals = np.quantile(center_vol,center_quantile)
+            center_vol = center_vol - clip_vals[0] # Set everything below 95% to 0, clip to 99.5th percentile
             center_vol = center_vol.clip(0,clip_vals[1] - clip_vals[0])
             com = np.round(ndimage.center_of_mass(np.array(center_vol)))
             coord = [x_slice.start, y_slice.start, z_slice.start] + com
@@ -197,7 +198,7 @@ class wholebrain_data:
             slice_dict = {}
 
         # Save injection site and estimation parameters to data object
-        self.injection_sites[ch] = {"plane":plane, "level":level, "coordinates":coord, "seed":seed, "center":center, "slice_dict": slice_dict, "span":span}
+        self.injection_sites[ch] = {"plane":plane, "level":level, "coordinates":coord, "seed":seed, "center":center, "slice_dict": slice_dict, "span":center_span}
         
         # Plot validation if requested
         if verbose:
