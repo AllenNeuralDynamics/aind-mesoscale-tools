@@ -71,9 +71,6 @@ class InjectionSite:
     def plot_injection_center(self, vmax = 600):
         # Function to plot the injection center.
 
-        # Check inputs
-        ch = self._check_channel_provided(ch)[0]
-
         if not hasattr(self, 'center_coordinate'):
             print(f"No injection site found for channel {self.channel}. Running get_injection_center with default parameters first.")
             self.get_injection_center()
