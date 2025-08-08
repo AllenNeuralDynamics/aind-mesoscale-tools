@@ -241,33 +241,33 @@ class wholebrain_data:
         else:
             plt.tick_params(left = False, labelleft = False, bottom = False, labelbottom = False)
 
-    def plot_injection_site(self, ch, vmax = 600):
-        # Function to plot the injection site for a given channel.
+    # def plot_injection_site(self, ch, vmax = 600):
+    #     # Function to plot the injection site for a given channel.
 
-        # Check inputs
-        ch = self._check_channel_provided(ch)[0]
+    #     # Check inputs
+    #     ch = self._check_channel_provided(ch)[0]
 
-        # Check if injection site exists
-        if ch not in self.injection_sites.keys():
-            print(f"No injection site found for channel {ch}. Running get_injection_site with default parameters first.")
-            self.get_injection_site(ch, verbose= False)
+    #     # Check if injection site exists
+    #     if ch not in self.injection_sites.keys():
+    #         print(f"No injection site found for channel {ch}. Running get_injection_site with default parameters first.")
+    #         self.get_injection_site(ch, verbose= False)
 
-        # Load parameters from injection site estimation
-        site_info = self.injection_sites[ch]
-        level = site_info["level"]
-        inj_coordinate = self._convert_zarr_index(site_info["coordinates"], output_level = 0, input_level = level) # Convert coordinates to index
+    #     # Load parameters from injection site estimation
+    #     site_info = self.injection_sites[ch]
+    #     level = site_info["level"]
+    #     inj_coordinate = self._convert_zarr_index(site_info["coordinates"], output_level = 0, input_level = level) # Convert coordinates to index
 
-        # Do plotting
-        plt.figure(figsize = (12,4.8))
-        indx_calls = [[2, 1], [2, 0], [0, 1]]
-        for i, plane in enumerate(["coronal","horizontal","sagittal"]):
-            ax = plt.subplot(1,3,i + 1)
-            ax.set_box_aspect(1)
-            ax.set_facecolor('black')
-            self.plot_slice(ch = ch, plane = plane, level = level, section = inj_coordinate[i], vmax = vmax)
-            plt.plot(inj_coordinate[indx_calls[i][0]], inj_coordinate[indx_calls[i][1]], '+', markersize = 5, markeredgewidth = 2, 
-                     color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
-        plt.tight_layout()
+    #     # Do plotting
+    #     plt.figure(figsize = (12,4.8))
+    #     indx_calls = [[2, 1], [2, 0], [0, 1]]
+    #     for i, plane in enumerate(["coronal","horizontal","sagittal"]):
+    #         ax = plt.subplot(1,3,i + 1)
+    #         ax.set_box_aspect(1)
+    #         ax.set_facecolor('black')
+    #         self.plot_slice(ch = ch, plane = plane, level = level, section = inj_coordinate[i], vmax = vmax)
+    #         plt.plot(inj_coordinate[indx_calls[i][0]], inj_coordinate[indx_calls[i][1]], '+', markersize = 5, markeredgewidth = 2, 
+    #                  color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
+    #     plt.tight_layout()
 
 
     def plot_point(self, cst, ch: list = [], span = 20, vmin = 0, vmax = 600):

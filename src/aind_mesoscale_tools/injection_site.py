@@ -3,6 +3,7 @@ Localization and quantification of injection sites in mesoscale whole-brain data
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy import ndimage
 from dask import array as da
 from .base_wrapper import wholebrain_data
@@ -66,3 +67,28 @@ class InjectionSite:
             self.centering_quantiles = {}
 
         return self.center_coordinate
+    
+    def plot_injection_center(self, vmax = 600):
+        # Function to plot the injection center.
+
+        # Check inputs
+        ch = self._check_channel_provided(ch)[0]
+
+        if not hasattr(self, 'center_coordinate'):
+            print(f"No injection site found for channel {self.channel}. Running get_injection_center with default parameters first.")
+            self.get_injection_center()
+
+        # Load parameters from injection site estimation
+        inj_coordinate = self.data._convert_zarr_index(self.center_coordinate, output_level = 0, input_level = self.center_level) # Convert coordinates to index
+
+        # Do plotting
+        plt.figure(figsize = (12,4.8))
+        indx_calls = [[2, 1], [2, 0], [0, 1]]
+        for i, plane in enumerate(["coronal","horizontal","sagittal"]):
+            ax = plt.subplot(1,3,i + 1)
+            ax.set_box_aspect(1)
+            ax.set_facecolor('black')
+            self.data.plot_slice(self.channel, plane = plane, level = self.center_level, section = inj_coordinate[i], vmax = vmax)
+            plt.plot(inj_coordinate[indx_calls[i][0]], inj_coordinate[indx_calls[i][1]], '+', markersize = 5, markeredgewidth = 2, 
+                     color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
+        plt.tight_layout()
