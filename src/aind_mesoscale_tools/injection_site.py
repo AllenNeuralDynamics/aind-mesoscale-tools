@@ -33,12 +33,14 @@ class InjectionSite:
             # Manual seed provided, convert to appropriate zarr level. Expects seed at full resolution.
             indx_max = tuple(self.data._convert_zarr_index(seed, output_level = self.center_level)) # Convert seed to index
             self.initialization_method = "manual"
+            self.initialization_coordinate = indx_max
 
         else:
             # If no seed is provided, find brightest pixel in entire volume, then convert to index
             pos_max = np.argmax(ch_vol).compute() # Find brightest pixel in entire volume, then convert to index
             indx_max = np.unravel_index(pos_max, ch_vol.shape)
             self.initialization_method = "brightest"
+            self.initialization_coordinate = indx_max
          
         if center_volume:
             # If centering is requested, compute center of mass within volume governed by span
