@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage
 from dask import array as da
-from .base_wrapper import wholebrain_data
+# from .base_wrapper import wholebrain_data
 
 class InjectionSite:
     initialization_method: str = None
