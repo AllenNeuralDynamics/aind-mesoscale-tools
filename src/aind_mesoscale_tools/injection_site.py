@@ -14,7 +14,7 @@ class InjectionSite:
     fill_method: str = None
 
     # Initiator
-    def __init__(self, brain : wholebrain_data, ch : str, reagent : str = None):
+    def __init__(self, brain, ch : str, reagent : str = None):
         self.data = brain
         self.channel = ch
         self.reagent = reagent
