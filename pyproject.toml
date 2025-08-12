@@ -17,7 +17,11 @@ readme = "README.md"
 dynamic = ["version"]
 
 dependencies = [
-    'aind-registration-utils @ git+https://github.com/AllenNeuralDynamics/aind-registration-utils.git'
+    'seaborn>=0.13.2',
+    'dask>=2025.7.0',
+    'zarr>=3.1.1',
+    'lxml>=6.0.0'
+    'aind-smartspim-transform-utils @ https://github.com/AllenNeuralDynamics/aind-smartspim-transform-utils.git'
 ]
 
 [project.optional-dependencies]

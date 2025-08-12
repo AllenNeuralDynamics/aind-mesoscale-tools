@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import ndimage
 from dask import array as da
+from aind_smartspim_transform_utils import CoordinateTransform
+from aind_smartspim_transform_utils.io import file_io as fio
 
 from .utils import gaussian_3d_rotated
 from .injection_site import InjectionSite
@@ -35,11 +37,15 @@ class wholebrain_data:
         # Method to get path to whole brain volume data
         sample_dir = self._find_sample_directory(verbose)
         self._get_image_volume_paths(sample_dir, verbose)
+        self._get_processing_manifest(verbose)
+        self.zarr_metadata = fio.get_image_metadata(self.root_dir, self.manifest)
         self._get_atlas_transformation_paths(verbose)
         self._get_cell_segmentation_paths(verbose)
         self._get_atlas_quantification_paths(verbose)
+        
     
     def _find_sample_directory(self, verbose):
+        # TODO making the root directory '../data' will be an issue if not using code ocean
         # Find the root directory for the sample and locate the sample directory
         root_dir = Path('../data')
         root_dir = [file for file in root_dir.iterdir() if self.sample in str(file)]
@@ -68,16 +74,21 @@ class wholebrain_data:
         self.ch_paths = ch_paths
         if verbose:
             print(f"Found image volumes in the following channels: {self.channels}")
+            
+    def _get_processing_manifest(self, verbose=False):
+        self.manifest = fio.get_processing_manifest(self.root_dir)
+        if verbose:
+            print("Successfully pulled processing manifest")
     
     def _get_atlas_transformation_paths(self, verbose):
         # Grab template based transformations
         transform_dir = self.root_dir.joinpath("image_atlas_alignment")
         self.atlas_channels = [exCh.name.split('_')[1] for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()]
         self.atlas_use_channel = self.atlas_channels[-1] if self.atlas_channels else None
-        self.transform_paths = {} # Not yet implemented
-        # transform_paths = {exCh.name.split('_')[1]: exCh.joinpath("detected_cells.xml") for exCh in transform_dir.glob('Ex*')}
+        self.transform_paths = fio.get_transforms(self.root_dir, self.manifest)
+
         if verbose:
-            print(f"Found atlas alignment in the following channels: {self.atlas_channels}. Grabbing transforms from: {self.atlas_use_channel} (Not yet implemented)")
+            print(f"Found atlas alignment in the following channels: {self.atlas_channels}. Grabbing transforms from: {self.atlas_use_channel}")
     
     def _get_cell_segmentation_paths(self, verbose):
         # Grab cell proposals and classifications
@@ -362,6 +373,70 @@ class wholebrain_data:
                     loc_cells[:,i] = loc_cells[:,i].clip(0,dim-1)
             location_dict[channel] = loc_cells
         return location_dict
+    
+    def transform_proposed_cells(self, locations: pd.DataFrame,reg_name = 'smartspim_lca', resolution = 25):
+        """
+        This will take points from raw imaging space and transform them into CCF space
+
+        Parameters
+        ----------
+        locations: pd.DataFrame
+            cell locations formatted as done by fio.load_cell_locations()
+        reg_name : 'smartspim_lca'
+            the type of registration that was done. Currently this is the only option
+        resolution: 25
+            resolution in um of the CCF being registered to. Currently this is 
+            the only option
+
+        Returns
+        -------
+        forward_transforms: pd.DataFrame
+            DataFrame with cell locations in CCF space
+
+        """
+        
+        ct = CoordinateTransform.CoordinateTransform(
+            name = reg_name, 
+            dataset_transforms = self.transforms, 
+            processing_manifest = self.manifest,
+            image_metadata = self.zarr_metadata
+        )
+        
+        forward_transforms = ct.forward_transforms(locations, resolution)
+        
+        return forward_transforms
+    
+    def transform_atlas_aligned_cells(self, locations: pd.DataFrame, reg_name = 'smartspim_lca', resolution = 25):
+        """
+        This will take points from CCF space and transform them into raw imaging space
+
+        Parameters
+        ----------
+        locations: pd.DataFrame
+            cell locations formatted as done by fio.load_cell_locations()
+        reg_name : 'smartspim_lca'
+            the type of registration that was done. Currently this is the only option
+        resolution: 25
+            resolution in um of the CCF being registered to. Currently this is 
+            the only option
+
+        Returns
+        -------
+        reverse_transforms: pd.DataFrame
+            DataFrame with cell locations in raw imaging space
+
+        """
+        
+        ct = CoordinateTransform.CoordinateTransform(
+            name = reg_name, 
+            dataset_transforms = self.transforms, 
+            processing_manifest = self.manifest,
+            image_metadata = self.zarr_metadata
+        )
+        
+        reverse_transformed = ct.reverse_transforms(locations, resolution)
+        
+        return reverse_transformed
     
     def get_atlas_aligned_quantification(self, ch: list):
         # Method to retrieve quantifications of cell counts by CCF region.
