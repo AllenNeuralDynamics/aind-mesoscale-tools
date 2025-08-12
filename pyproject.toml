@@ -17,6 +17,7 @@ readme = "README.md"
 dynamic = ["version"]
 
 dependencies = [
+    'git+https://github.com/AllenNeuralDynamics/aind-registration-utils.git'
 ]
 
 [project.optional-dependencies]
