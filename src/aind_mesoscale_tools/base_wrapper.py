@@ -39,7 +39,7 @@ class wholebrain_data:
         self._get_image_volume_paths(sample_dir, verbose)
         self._get_acquisition(verbose)
         self._get_atlas_transformation_paths(verbose)
-        self.zarr_metadata = fio.get_image_metadata(self.root_dir, self.atlas_use_channel)
+        self.zarr_metadata = fio.get_image_metadata(self.root_dir, self.transforms_channel)
         self._get_cell_segmentation_paths(verbose)
         self._get_atlas_quantification_paths(verbose)
         
@@ -89,9 +89,9 @@ class wholebrain_data:
         
         for ch_name in self.channel_names:
             if self.atlas_use_channel in ch_name:
-                transforms_channel = ch_name
+                self.transforms_channel = ch_name
         
-        self.transform_paths = fio.get_transforms(self.root_dir, transforms_channel)
+        self.transform_paths = fio.get_transforms(self.root_dir, self.transforms_channel)
 
         if verbose:
             print(f"Found atlas alignment in the following channels: {self.atlas_channels}. Grabbing transforms from: {self.atlas_use_channel}")
