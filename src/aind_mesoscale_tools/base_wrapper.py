@@ -403,7 +403,7 @@ class wholebrain_data:
         
         ct = CoordinateTransform.CoordinateTransform(
             name = reg_name, 
-            dataset_transforms = self.transforms, 
+            dataset_transforms = self.transform_paths, 
             acquisition = self.acquistion,
             image_metadata = self.zarr_metadata
         )
@@ -435,7 +435,7 @@ class wholebrain_data:
         
         ct = CoordinateTransform.CoordinateTransform(
             name = reg_name, 
-            dataset_transforms = self.transforms, 
+            dataset_transforms = self.transform_paths, 
             acquistion = self.acquisition,
             image_metadata = self.zarr_metadata
         )
