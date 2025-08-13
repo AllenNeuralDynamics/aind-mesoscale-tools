@@ -408,7 +408,7 @@ class wholebrain_data:
             image_metadata = self.zarr_metadata
         )
         
-        forward_transforms = ct.forward_transforms(locations, resolution)
+        forward_transforms = ct.forward_transform(locations, resolution)
         
         return forward_transforms
     
@@ -440,7 +440,7 @@ class wholebrain_data:
             image_metadata = self.zarr_metadata
         )
         
-        reverse_transformed = ct.reverse_transforms(locations, resolution)
+        reverse_transformed = ct.reverse_transform(locations, resolution)
         
         return reverse_transformed
     
