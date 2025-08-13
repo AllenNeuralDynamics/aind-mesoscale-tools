@@ -75,7 +75,7 @@ class wholebrain_data:
         if verbose:
             print(f"Found image volumes in the following channels: {self.channels}")
             
-    def _get_acquistion(self, verbose=False):
+    def _get_acquisition(self, verbose=False):
         self.acquisiton = fio.get_acquisition(self.root_dir)
         if verbose:
             print("Successfully pulled acquistion metadata")
