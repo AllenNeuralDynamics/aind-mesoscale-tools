@@ -84,8 +84,14 @@ class wholebrain_data:
         # Grab template based transformations
         transform_dir = self.root_dir.joinpath("image_atlas_alignment")
         self.atlas_channels = [exCh.name.split('_')[1] for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()]
+        self.channel_names = [exCh.name for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()]
         self.atlas_use_channel = self.atlas_channels[-1] if self.atlas_channels else None
-        self.transform_paths = fio.get_transforms(self.root_dir, self.atlas_use_channel)
+        
+        for ch_name in self.channel_names:
+            if self.atlas_use_channel in ch_name:
+                transforms_channel = ch_name
+        
+        self.transform_paths = fio.get_transforms(self.root_dir, transforms_channel)
 
         if verbose:
             print(f"Found atlas alignment in the following channels: {self.atlas_channels}. Grabbing transforms from: {self.atlas_use_channel}")
