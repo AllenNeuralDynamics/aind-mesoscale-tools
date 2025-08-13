@@ -37,9 +37,9 @@ class wholebrain_data:
         # Method to get path to whole brain volume data
         sample_dir = self._find_sample_directory(verbose)
         self._get_image_volume_paths(sample_dir, verbose)
-        self._get_processing_manifest(verbose)
-        self.zarr_metadata = fio.get_image_metadata(self.root_dir, self.manifest)
+        self._get_acquisition(verbose)
         self._get_atlas_transformation_paths(verbose)
+        self.zarr_metadata = fio.get_image_metadata(self.root_dir, self.atlas_use_channel)
         self._get_cell_segmentation_paths(verbose)
         self._get_atlas_quantification_paths(verbose)
         
@@ -75,17 +75,17 @@ class wholebrain_data:
         if verbose:
             print(f"Found image volumes in the following channels: {self.channels}")
             
-    def _get_processing_manifest(self, verbose=False):
-        self.manifest = fio.get_processing_manifest(self.root_dir)
+    def _get_acquistion(self, verbose=False):
+        self.acquisiton = fio.get_acquisition(self.root_dir)
         if verbose:
-            print("Successfully pulled processing manifest")
+            print("Successfully pulled acquistion metadata")
     
     def _get_atlas_transformation_paths(self, verbose):
         # Grab template based transformations
         transform_dir = self.root_dir.joinpath("image_atlas_alignment")
         self.atlas_channels = [exCh.name.split('_')[1] for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()]
         self.atlas_use_channel = self.atlas_channels[-1] if self.atlas_channels else None
-        self.transform_paths = fio.get_transforms(self.root_dir, self.manifest)
+        self.transform_paths = fio.get_transforms(self.root_dir, self.atlas_use_channel)
 
         if verbose:
             print(f"Found atlas alignment in the following channels: {self.atlas_channels}. Grabbing transforms from: {self.atlas_use_channel}")
@@ -398,7 +398,7 @@ class wholebrain_data:
         ct = CoordinateTransform.CoordinateTransform(
             name = reg_name, 
             dataset_transforms = self.transforms, 
-            processing_manifest = self.manifest,
+            acquisition = self.acquistion,
             image_metadata = self.zarr_metadata
         )
         
@@ -430,7 +430,7 @@ class wholebrain_data:
         ct = CoordinateTransform.CoordinateTransform(
             name = reg_name, 
             dataset_transforms = self.transforms, 
-            processing_manifest = self.manifest,
+            acquistion = self.acquisition,
             image_metadata = self.zarr_metadata
         )
         
