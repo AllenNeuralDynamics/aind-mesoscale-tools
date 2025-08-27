@@ -37,9 +37,8 @@ class wholebrain_data:
         # Method to get path to whole brain volume data
         sample_dir = self._find_sample_directory(verbose)
         self._get_image_volume_paths(sample_dir, verbose)
-        self._get_acquisition(verbose)
         self._get_atlas_transformation_paths(verbose)
-        self.zarr_metadata = fio.get_image_metadata(self.root_dir, self.transforms_channel)
+        self._get_acquisition_metadata(verbose)
         self._get_cell_segmentation_paths(verbose)
         self._get_atlas_quantification_paths(verbose)
         
@@ -75,26 +74,24 @@ class wholebrain_data:
         if verbose:
             print(f"Found image volumes in the following channels: {self.channels}")
             
-    def _get_acquisition(self, verbose=False):
+    def _get_acquisition_metadata(self, verbose=False):
         self.acquisition = fio.get_acquisition(self.root_dir)
+        self.zarr_metadata = fio.get_image_metadata(self.root_dir, self.atlas_use_channel)
         if verbose:
             print("Successfully pulled acquistion metadata")
     
     def _get_atlas_transformation_paths(self, verbose):
         # Grab template based transformations
         transform_dir = self.root_dir.joinpath("image_atlas_alignment")
-        self.atlas_channels = [exCh.name.split('_')[1] for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()]
-        self.channel_names = [exCh.name for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()]
-        self.atlas_use_channel = self.atlas_channels[-1] if self.atlas_channels else None
+        self.atlas_channels = {exCh.name.split('_')[1]: exCh  for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()}
+        self.atlas_use_channel = self.atlas_channels[sorted(self.atlas_channels.keys(), key=int)[-1]] if self.atlas_channels else None
         
-        for ch_name in self.channel_names:
-            if self.atlas_use_channel in ch_name:
-                self.transforms_channel = ch_name
-        
-        self.transform_paths = fio.get_transforms(self.root_dir, self.transforms_channel)
-
-        if verbose:
-            print(f"Found atlas alignment in the following channels: {self.atlas_channels}. Grabbing transforms from: {self.atlas_use_channel}")
+        if self.atlas_use_channel:
+            self.transform_paths = fio.get_transforms(self.root_dir, self.atlas_use_channel)
+            if verbose:
+                print(f"Found atlas alignment in the following channels: {self.atlas_channels}. Grabbing transforms from: {self.atlas_use_channel}")
+        else:
+            print("Warning: no atlas alignment data was found")
     
     def _get_cell_segmentation_paths(self, verbose):
         # Grab cell proposals and classifications
@@ -380,7 +377,7 @@ class wholebrain_data:
             location_dict[channel] = loc_cells
         return location_dict
     
-    def transform_proposed_cells(self, locations: pd.DataFrame,reg_name = 'smartspim_lca', resolution = 25):
+    def forward_transform_points(self, locations: pd.DataFrame,reg_name = 'smartspim_lca', resolution = 25):
         """
         This will take points from raw imaging space and transform them into CCF space
 
@@ -412,7 +409,7 @@ class wholebrain_data:
         
         return forward_transforms
     
-    def transform_atlas_aligned_cells(self, locations: pd.DataFrame, reg_name = 'smartspim_lca', resolution = 25):
+    def reverse_transform_points(self, locations: pd.DataFrame, reg_name = 'smartspim_lca', resolution = 25):
         """
         This will take points from CCF space and transform them into raw imaging space
 
