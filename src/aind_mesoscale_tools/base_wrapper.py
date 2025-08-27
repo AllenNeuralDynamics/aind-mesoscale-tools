@@ -83,7 +83,7 @@ class wholebrain_data:
     def _get_atlas_transformation_paths(self, verbose):
         # Grab template based transformations
         transform_dir = self.root_dir.joinpath("image_atlas_alignment")
-        self.atlas_channels = {exCh.name.split('_')[1]: exCh  for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()}
+        self.atlas_channels = {exCh.name.split('_')[1]: exCh.name  for exCh in transform_dir.glob('Ex*') if exCh.joinpath('ls_to_template_SyN_1Warp.nii.gz').exists()}
         self.atlas_use_channel = self.atlas_channels[sorted(self.atlas_channels.keys(), key=int)[-1]] if self.atlas_channels else None
         
         if self.atlas_use_channel:
