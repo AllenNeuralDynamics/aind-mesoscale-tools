@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import ndimage
 from dask import array as da
-from aind_smartspim_transform_utils import CoordinateTransform
+from aind_smartspim_transform_utils import CoordinateTransform, ImageTransform
 from aind_smartspim_transform_utils.io import file_io as fio
 
 from .utils import gaussian_3d_rotated
@@ -440,6 +440,75 @@ class wholebrain_data:
         reverse_transformed = ct.reverse_transform(locations, resolution)
         
         return reverse_transformed
+    
+    def forward_transform_image(self, image):
+        """
+        Transforms an image from raw imaging space to ccf space using 
+        precalculated transformations
+
+        Parameters
+        ----------
+        image : np.array
+            An image in raw imaging space at the resolution of the image that
+            was used to make the original transformations. this is usually
+            zarr level 3
+
+        Returns
+        -------
+        img_frw : np.ndarray
+            The input image transformed into in 25um ccf space
+
+        """
+        
+        if not isinstance(image, np.ndarray):
+            image = np.asarray(image)
+        
+        it = ImageTransform.ImageTransform(
+            name = 'smartspim_lca', 
+            dataset_transforms = self.transform_paths, 
+            acquisition = self.acquisition,
+            image_metadata = self.zarr_metadata    
+        )
+        
+        img_frw = it.forward_transform(image)
+        
+        return img_frw
+    
+    def reverse_transform_image(self, image, dataset_image):
+        """
+        Transforms and image from ccf space to raw imaging space using
+        precalculated transformations
+
+        Parameters
+        ----------
+        image : np.ndarray
+            An image in 25um CCF space that you want transformed
+            
+        dataset_image: np.ndarray
+            Image from the dataset that you are transforming the ccf image into.
+            Needs to be at the resolution that the registration took place. For
+            most datasets that will be zarr level 3
+
+        Returns
+        -------
+        img_rev : np.ndarray
+            the input image transformed into raw imaging space
+
+        """
+        
+        if not isinstance(image, np.ndarray):
+            image = np.asarray(image)
+        
+        it = ImageTransform.ImageTransform(
+            name = 'smartspim_lca', 
+            dataset_transforms = self.transform_paths, 
+            acquisition = self.acquisition,
+            image_metadata = self.zarr_metadata    
+        )
+        
+        img_rev = it.reverse_transform(dataset_image, image)
+        
+        return img_rev
     
     def get_atlas_aligned_quantification(self, ch: list):
         # Method to retrieve quantifications of cell counts by CCF region.
