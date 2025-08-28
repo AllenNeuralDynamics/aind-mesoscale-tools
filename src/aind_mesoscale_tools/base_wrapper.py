@@ -485,7 +485,9 @@ class wholebrain_data:
             An image in 25um CCF space that you want transformed
             
         dataset_image: np.ndarray
-            An image from the dataset that you are transforming the ccf image into
+            Image from the dataset that you are transforming the ccf image into.
+            Needs to be at the resolution that the registration took place. For
+            most datasets that will be zarr level 3
 
         Returns
         -------
