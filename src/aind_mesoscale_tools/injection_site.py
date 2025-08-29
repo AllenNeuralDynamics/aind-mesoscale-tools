@@ -68,7 +68,7 @@ class InjectionSite:
 
         return self.center_coordinate
     
-    def plot_injection_center(self, vmax = 600):
+    def plot_injection_center(self, vmax = 600, verbose = True):
         # Function to plot the injection center.
 
         if not hasattr(self, 'center_coordinate'):
@@ -85,7 +85,7 @@ class InjectionSite:
             ax = plt.subplot(1,3,i + 1)
             ax.set_box_aspect(1)
             ax.set_facecolor('black')
-            self.data.plot_slice(self.channel, plane = plane, level = self.center_level, section = inj_coordinate[i], vmax = vmax)
+            self.data.plot_slice(self.channel, plane = plane, level = self.center_level, section = inj_coordinate[i], vmax = vmax, verbose = verbose)
             plt.plot(inj_coordinate[indx_calls[i][0]], inj_coordinate[indx_calls[i][1]], '+', markersize = 5, markeredgewidth = 2, 
                      color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
         plt.tight_layout()
