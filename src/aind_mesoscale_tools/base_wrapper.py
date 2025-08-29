@@ -78,7 +78,7 @@ class wholebrain_data:
         self.acquisition = fio.get_acquisition(self.root_dir)
         self.zarr_metadata = fio.get_image_metadata(self.root_dir, self.atlas_use_channel)
         if verbose:
-            print("Successfully pulled acquistion metadata")
+            print("Successfully pulled acquisition metadata")
     
     def _get_atlas_transformation_paths(self, verbose):
         # Grab template based transformations
@@ -433,7 +433,7 @@ class wholebrain_data:
         ct = CoordinateTransform.CoordinateTransform(
             name = reg_name, 
             dataset_transforms = self.transform_paths, 
-            acquistion = self.acquisition,
+            acquisition = self.acquisition,
             image_metadata = self.zarr_metadata
         )
         
