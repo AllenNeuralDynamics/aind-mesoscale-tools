@@ -13,7 +13,7 @@ from dask import array as da
 from aind_smartspim_transform_utils import CoordinateTransform, ImageTransform
 from aind_smartspim_transform_utils.io import file_io as fio
 
-from .utils import gaussian_3d_rotated
+# from .utils import gaussian_3d_rotated
 from .injection_site import InjectionSite
 
 class wholebrain_data:
