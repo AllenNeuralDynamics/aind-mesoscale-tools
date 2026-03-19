@@ -337,12 +337,16 @@ class wholebrain_data:
                            vmin = v_dict[channel][0], vmax = v_dict[channel][1], verbose = False, ticks = ticks)
         plt.title('')
         
-    def get_neuroglancer_link(self):
+    def get_neuroglancer_link(self, return_string = False):
         # Method to print neuroglancer link of associated imaging data
         link_path = self.root_dir.joinpath("neuroglancer_config.json")
         # link_path =self.root_dir.joinpath("image_cell_segmentation/Ex_561_Em_593/visualization/neuroglancer_config.json")
         ng_json = pd.read_json(link_path, orient = 'index')
-        print(ng_json[0]["ng_link"])
+        ng_link = ng_json[0]["ng_link"]
+        if return_string:
+            return ng_link
+        else:
+            print(ng_link)
 
     def get_proposed_cells(self, ch: list):
         # Method to retrieve and format proposed cell coordinates from segmentation XML files.
