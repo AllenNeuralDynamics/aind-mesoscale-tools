@@ -91,7 +91,7 @@ class InjectionSite:
                      color = 'white', markerfacecolor = 'black') # Plot injection site as white cross
         plt.tight_layout()
     
-    def get_injection_volume(self, method='manual', local_span=60, radius=60, percentile=90, level=None):
+    def get_injection_volume(self, method='manual', local_span=60, level=None, radius=60, percentile=90, gaussian_init=None, gaussian_threshold_sigma=1.0):
         """Estimate injection site volume around the center coordinate.
         
         Creates a binary mask using one of three approaches: manual spherical mask,
@@ -110,13 +110,27 @@ class InjectionSite:
             around center_coordinate used for computation (cubic region of size 
             2*local_span+1 in each direction).
         radius : int, default 60
-            Only used for 'manual' method. Radius in voxels for spherical mask.
+            Only used for 'manual' method. Radius in voxels (at requested zarr level)
+            for spherical mask.
         level : int, optional
             Zarr level for volume computation. If None, uses the same level as
             center_coordinate (from get_injection_center).
         percentile : float, default 90
             Only used when method='percentile'. Percentile value (0-100) for
             thresholding. Voxels above this percentile will be included in the mask.
+        gaussian_init : dict, optional
+            Only used when method='gaussian'. Custom initialization parameters for
+            Gaussian fitting. Dictionary with keys:
+            - 'amplitude': Initial amplitude guess (float)
+            - 'center': Initial center coordinates (tuple of 3 floats)
+            - 'sigmas': Initial standard deviations (tuple of 3 floats) 
+            - 'rotations': Initial rotation angles in radians (tuple of 3 floats)
+            If None, automatic initialization is used.
+        gaussian_threshold_sigma : float, optional
+            Only used when method='gaussian'. Threshold for creating binary mask
+            expressed in terms of standard deviations from peak. The threshold
+            value is calculated as amplitude * exp(-sigma^2 / 2). If None,
+            uses half-maximum threshold (default behavior).
             
         Returns
         -------
@@ -140,6 +154,13 @@ class InjectionSite:
         >>> 
         >>> # 3D Gaussian fitting
         >>> mask = injection.get_injection_volume(method='gaussian', local_span=60)
+        >>> 
+        >>> # 3D Gaussian fitting with custom initialization
+        >>> init = {'amplitude': 1000, 'center': (30, 30, 30), 'sigmas': (5, 5, 5), 'rotations': (0, 0, 0)}
+        >>> mask = injection.get_injection_volume(method='gaussian', local_span=60, gaussian_init=init)
+        >>> 
+        >>> # 3D Gaussian fitting with sigma-based threshold (2 standard deviations)
+        >>> mask = injection.get_injection_volume(method='gaussian', local_span=60, gaussian_threshold_sigma=2.0)
         >>> 
         >>> # Percentile thresholding with post-processing
         >>> mask = injection.get_injection_volume(method='percentile', local_span=80, percentile=95)
@@ -175,6 +196,9 @@ class InjectionSite:
         self.volume_level = working_level
         if method == 'percentile':
             self.volume_percentile = percentile
+        if method == 'gaussian':
+            self.volume_gaussian_init = gaussian_init
+            self.volume_gaussian_threshold_sigma = gaussian_threshold_sigma
         
         # Get volume data at working level
         self.data.set_zarr_level(working_level, verbose=False)
@@ -200,12 +224,32 @@ class InjectionSite:
         # Apply selected method
         if method == 'manual':
             mask = self._volume_manual_span(local_vol, radius)
+            # For manual method, center remains the same
+            updated_center_coord = center_coord
             
         elif method == 'gaussian':
-            mask = self._volume_gaussian_fit(local_vol)
+            mask = self._volume_gaussian_fit(local_vol, gaussian_init, gaussian_threshold_sigma)
+            # For Gaussian method, use fitted center coordinates
+            if hasattr(self, 'volume_gaussian_params'):
+                # Convert local coordinates back to full volume coordinates
+                local_center = self.volume_gaussian_params['center']
+                updated_center_coord = (
+                    local_center[0] + x_slice.start,
+                    local_center[1] + y_slice.start,
+                    local_center[2] + z_slice.start
+                )
+            else:
+                updated_center_coord = center_coord
             
         elif method == 'percentile':
             mask = self._volume_percentile_threshold(local_vol, percentile)
+            # For percentile method, compute center of mass of the final mask
+            local_com = ndimage.center_of_mass(mask.astype(float))
+            updated_center_coord = (
+                local_com[0] + x_slice.start,
+                local_com[1] + y_slice.start,
+                local_com[2] + z_slice.start
+            )
             
         # Create full-size mask
         full_mask = np.zeros(ch_vol.shape, dtype=bool)
@@ -215,7 +259,7 @@ class InjectionSite:
         self.volume_mask = full_mask
         self.volume_local_mask = mask
         self.volume_slices = {'x': x_slice, 'y': y_slice, 'z': z_slice}
-        self.volume_center_coord = center_coord
+        self.volume_center_coord = updated_center_coord
         
         return full_mask
     
@@ -245,9 +289,6 @@ class InjectionSite:
         
         # Apply morphological post-processing (obligate for percentile method)
         processed_mask = self._postprocess_mask(mask)
-        
-        # Store threshold value
-        self.volume_threshold = threshold
         
         return processed_mask
     
@@ -282,10 +323,9 @@ class InjectionSite:
         
         # Create spherical mask
         mask = distances <= radius
-        self.volume_threshold = None  # No threshold for manual method
         return mask
     
-    def _volume_gaussian_fit(self, volume):
+    def _volume_gaussian_fit(self, volume, gaussian_init=None, gaussian_threshold_sigma=1.0):
         """Create binary mask using 3D Gaussian fitting.
         
         Fits a 3D Gaussian function to the volume data and creates a mask
@@ -295,6 +335,16 @@ class InjectionSite:
         ----------
         volume : np.ndarray
             3D volume array
+        gaussian_init : dict, optional
+            Custom initialization parameters. Dictionary with keys:
+            - 'amplitude': Initial amplitude guess (float)
+            - 'center': Initial center coordinates (tuple of 3 floats)
+            - 'sigmas': Initial standard deviations (tuple of 3 floats) 
+            - 'rotations': Initial rotation angles in radians (tuple of 3 floats)
+            If None, automatic initialization is used.
+        gaussian_threshold_sigma : float, optional
+            Threshold for creating binary mask expressed in terms of standard
+            deviations from peak. If None, uses half-maximum threshold.
             
         Returns
         -------
@@ -308,16 +358,31 @@ class InjectionSite:
         X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
         
         # Initial parameter guess
-        center_x, center_y, center_z = np.array(volume.shape) / 2
-        amplitude = np.max(volume)
-        sigma_init = min(volume.shape) / 4
-        
-        initial_params = [
-            amplitude,           # A
-            center_x, center_y, center_z,  # x0, y0, z0
-            sigma_init, sigma_init, sigma_init,  # sigma_x, sigma_y, sigma_z
-            0, 0, 0             # alpha, beta, gamma (rotation angles)
-        ]
+        if gaussian_init is not None:
+            # Use custom initialization
+            amplitude = gaussian_init.get('amplitude', np.max(volume))
+            center_x, center_y, center_z = gaussian_init.get('center', np.array(volume.shape) / 2)
+            sigma_x, sigma_y, sigma_z = gaussian_init.get('sigmas', (min(volume.shape) / 4,) * 3)
+            alpha, beta, gamma = gaussian_init.get('rotations', (0, 0, 0))
+            
+            initial_params = [
+                amplitude,           # A
+                center_x, center_y, center_z,  # x0, y0, z0
+                sigma_x, sigma_y, sigma_z,  # sigma_x, sigma_y, sigma_z
+                alpha, beta, gamma             # alpha, beta, gamma (rotation angles)
+            ]
+        else:
+            # Automatic initialization
+            center_x, center_y, center_z = np.array(volume.shape) / 2
+            amplitude = np.max(volume)
+            sigma_init = min(volume.shape) / 4
+            
+            initial_params = [
+                amplitude,           # A
+                center_x, center_y, center_z,  # x0, y0, z0
+                sigma_init, sigma_init, sigma_init,  # sigma_x, sigma_y, sigma_z
+                0, 0, 0             # alpha, beta, gamma (rotation angles)
+            ]
         
         try:
             # Flatten data for curve fitting
@@ -335,8 +400,9 @@ class InjectionSite:
                 (X, Y, Z), *popt
             ).reshape(volume.shape)
             
-            # Create mask using threshold at half-maximum
-            threshold = popt[0] / 2  # Half of amplitude
+            # Create mask using specified threshold, based on sigma distance from peak
+            threshold = popt[0] * np.exp(-gaussian_threshold_sigma**2 / 2)
+                
             mask = fitted_gaussian > threshold
             
             # Store fitting parameters
@@ -346,7 +412,6 @@ class InjectionSite:
                 'sigmas': (popt[4], popt[5], popt[6]),
                 'rotations': (popt[7], popt[8], popt[9])
             }
-            self.volume_threshold = threshold
             
         except (RuntimeError, ValueError) as e:
             raise RuntimeError(f"Gaussian fitting failed: {e}")
