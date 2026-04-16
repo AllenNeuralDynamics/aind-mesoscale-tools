@@ -27,7 +27,12 @@ def gaussian_3d_rotated(X, A, x0, y0, z0, sigma_x, sigma_y, sigma_z, alpha, beta
     ndarray
         3D Gaussian values at the given coordinates
     """
-    x, y, z = X
+    x, y, z = (np.asarray(axis) for axis in X)
+    input_shape = x.shape
+
+    if y.shape != input_shape or z.shape != input_shape:
+        raise ValueError("x, y, and z coordinate arrays must have the same shape")
+
     # Center the coordinates
     xc = x - x0
     yc = y - y0
@@ -46,9 +51,13 @@ def gaussian_3d_rotated(X, A, x0, y0, z0, sigma_x, sigma_y, sigma_z, alpha, beta
          np.cos(beta) * np.cos(gamma)]
     ])
 
-    # Rotate coordinates
-    rotated_coords = R @ np.array([xc, yc, zc])
-    xr, yr, zr = rotated_coords
+    # Rotate coordinates in flattened form, then restore original shape.
+    # This supports both raveled coordinates and meshgrid-style arrays.
+    coords = np.vstack([xc.ravel(), yc.ravel(), zc.ravel()])
+    rotated_coords = R @ coords
+    xr = rotated_coords[0].reshape(input_shape)
+    yr = rotated_coords[1].reshape(input_shape)
+    zr = rotated_coords[2].reshape(input_shape)
 
     # Gaussian in rotated coordinates
     return A * np.exp(
