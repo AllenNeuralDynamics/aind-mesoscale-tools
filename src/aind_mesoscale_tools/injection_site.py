@@ -259,7 +259,7 @@ class InjectionSite:
         self.volume_mask = full_mask
         self.volume_local_mask = mask
         self.volume_slices = {'x': x_slice, 'y': y_slice, 'z': z_slice}
-        self.volume_center_coord = updated_center_coord
+        self.volume_center_coord = tuple(round(coord) for coord in updated_center_coord)
         
         return full_mask
     
