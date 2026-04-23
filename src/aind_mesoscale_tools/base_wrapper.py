@@ -109,7 +109,22 @@ class wholebrain_data:
         # Grab CCF quantifications
         quant_dir = self.root_dir.joinpath("image_cell_quantification")
         self.quant_paths = {exCh.name.split('_')[1]: exCh.joinpath("cell_count_by_region.csv") for exCh in quant_dir.glob('Ex*')}
-        self.ccf_cells_paths = {exCh.name.split('_')[1]: exCh.joinpath("transformed_cells.xml") for exCh in quant_dir.glob('Ex*')}
+        
+        # Check for both XML and CSV formats for transformed cells
+        self.ccf_cells_paths = {}
+        for exCh in quant_dir.glob('Ex*'):
+            channel_id = exCh.name.split('_')[1]
+            xml_path = exCh.joinpath("transformed_cells.xml")
+            csv_path = exCh.joinpath("transformed_cells.csv")
+            
+            if xml_path.exists():
+                self.ccf_cells_paths[channel_id] = xml_path
+            elif csv_path.exists():
+                self.ccf_cells_paths[channel_id] = csv_path
+            else:
+                if verbose:
+                    print(f"No transformed cell coordinates found for channel {channel_id}.")
+                
         if verbose:
             print(f"Found atlas aligned quantifications in the following channels: {list(self.quant_paths.keys())}")
         
@@ -372,8 +387,18 @@ class wholebrain_data:
 
         location_dict = {}
         for channel in ch:
-            loc_cells_df = pd.read_xml(self.ccf_cells_paths[channel],xpath = "//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
-            loc_cells = loc_cells_df.to_numpy() # Cells are output in [AP, DV, ML] ### NOTE, some older versions are oriented differently
+            file_path = self.ccf_cells_paths[channel]
+            
+            # Check file extension to determine loading method
+            if str(file_path).endswith('.xml'):
+                loc_cells_df = pd.read_xml(file_path, xpath="//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
+                loc_cells = loc_cells_df.to_numpy() # Cells are output in [AP, DV, ML] ### NOTE, some older versions are oriented differently
+            elif str(file_path).endswith('.csv'):
+                loc_cells_df = pd.read_csv(file_path)
+                loc_cells = loc_cells_df[["x","y","z"]].to_numpy()
+            else:
+                raise ValueError(f"Unsupported file format for {file_path}. Expected .xml or .csv")
+                
             if clip_locations:
                 # Ensure cells fall within bounds of CCF annotation volume
                 for i, dim in enumerate(self.ccf_dimensions):
