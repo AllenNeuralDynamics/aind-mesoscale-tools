@@ -69,7 +69,7 @@ class wholebrain_data:
     def _get_image_volume_paths(self, sample_dir, verbose):
         # Grab channel, named by excitation
         ch_paths = {exCh.name.split('_')[1]: exCh for exCh in sample_dir.glob('Ex*.zarr')}
-        self.channels = list(ch_paths.keys())
+        self.channels = sorted(list(ch_paths.keys()))
         self.ch_paths = ch_paths
         if verbose:
             print(f"Found image volumes in the following channels: {self.channels}")
