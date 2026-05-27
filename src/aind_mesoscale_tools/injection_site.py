@@ -79,6 +79,14 @@ class InjectionSite:
         # Load parameters from injection site estimation
         inj_coordinate = self.data._convert_zarr_index(self.center_coordinate, output_level = 0, input_level = self.center_level) # Convert coordinates to index
 
+        # Adjust for orientation
+        if self.center_orientation.lower() == "coronal":
+            inj_coordinate = (inj_coordinate[0], inj_coordinate[1], inj_coordinate[2])
+        elif (self.center_orientation.lower() == "horizontal") | (self.center_orientation.lower() == "transverse"):
+            inj_coordinate = (inj_coordinate[1], inj_coordinate[0], inj_coordinate[2])
+        elif self.center_orientation.lower() == "sagittal":
+            inj_coordinate = (inj_coordinate[2], inj_coordinate[1], inj_coordinate[0])
+        
         # Do plotting
         plt.figure(figsize = (12,4.8))
         indx_calls = [[2, 1], [2, 0], [0, 1]]
