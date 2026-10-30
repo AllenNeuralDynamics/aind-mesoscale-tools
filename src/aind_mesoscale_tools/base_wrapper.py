@@ -1,9 +1,8 @@
 """
 Module for handling whole brain mesoscale imaging data.
 """
-import os
 from pathlib import Path
-from unittest import result
+from upath import UPath
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -25,8 +24,10 @@ class wholebrain_data:
     atlas_quantifications = {} # atlas quantification information, populated by get_atlas_aligned_quantification call
     
     # Initiator
-    def __init__(self,sample, level = 3, verbose = True):
-        self.sample = str(sample)
+    def __init__(self, source, level = 3, verbose = True):
+        # source: sample ID (searched for in ../data), or an S3 URL / path used directly as the root directory
+        self.root_dir = self._resolve_root(source)
+        self.sample = self.root_dir.name
         self.get_data_paths(verbose)
         self.set_zarr_level(level, verbose)
         self.set_colormaps()
@@ -43,19 +44,23 @@ class wholebrain_data:
         self._get_atlas_quantification_paths(verbose)
         
     
-    def _find_sample_directory(self, verbose):
-        # TODO making the root directory '../data' will be an issue if not using code ocean
-        # Find the root directory for the sample and locate the sample directory
-        root_dir = Path('../data')
-        root_dir = [file for file in root_dir.iterdir() if self.sample in str(file)]
-        
-        # Check that the appropriate number of folders were found.
-        if len(root_dir) > 1:
+    @staticmethod
+    def _resolve_root(source):
+        # Explicit root: S3 URL (or other protocol URL), or a local/universal path
+        if isinstance(source, Path) or "://" in str(source):
+            return UPath(source)
+
+        # Otherwise treat as a sample ID and search the Code Ocean data directory
+        sample = str(source)
+        matches = [file for file in Path('../data').iterdir() if sample in str(file)]
+        if len(matches) > 1:
             raise ValueError("Found multiple directories matching requested sample ID.")
-        elif len(root_dir) == 0:
+        elif len(matches) == 0:
             raise ValueError("Could not find a data directory matching input sample ID.")
-        self.root_dir = root_dir[0]
-        
+        return UPath(matches[0])
+
+    def _find_sample_directory(self, verbose):
+        # Locate the OMEZarr directory under the root directory
         # Handle iteration of several formatting conventions ## MTS - Future versions might load metadata to direct loading
         sample_dir = self.root_dir.joinpath('processed', 'stitching', 'OMEZarr')
         if not sample_dir.exists():
@@ -356,7 +361,7 @@ class wholebrain_data:
         # Method to print neuroglancer link of associated imaging data
         link_path = self.root_dir.joinpath("neuroglancer_config.json")
         # link_path =self.root_dir.joinpath("image_cell_segmentation/Ex_561_Em_593/visualization/neuroglancer_config.json")
-        ng_json = pd.read_json(link_path, orient = 'index')
+        ng_json = pd.read_json(str(link_path), orient = 'index')
         ng_link = ng_json[0]["ng_link"]
         if return_string:
             return ng_link
@@ -371,7 +376,7 @@ class wholebrain_data:
 
         location_dict = {}
         for channel in ch:
-            prop_cells_df = pd.read_xml(self.prop_paths[channel],xpath = "//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
+            prop_cells_df = pd.read_xml(str(self.prop_paths[channel]),xpath = "//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
             loc_cells = prop_cells_df.to_numpy()
             location_dict[channel] = loc_cells
         # Save proposed cells to class attribute for later use
@@ -391,10 +396,10 @@ class wholebrain_data:
             
             # Check file extension to determine loading method
             if str(file_path).endswith('.xml'):
-                loc_cells_df = pd.read_xml(file_path, xpath="//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
+                loc_cells_df = pd.read_xml(str(file_path), xpath="//CellCounter_Marker_File//Marker_Data//Marker_Type//Marker")
                 loc_cells = loc_cells_df.to_numpy() # Cells are output in [AP, DV, ML] ### NOTE, some older versions are oriented differently
             elif str(file_path).endswith('.csv'):
-                loc_cells_df = pd.read_csv(file_path)
+                loc_cells_df = pd.read_csv(str(file_path))
                 loc_cells = loc_cells_df[["x","y","z"]].to_numpy()
             else:
                 raise ValueError(f"Unsupported file format for {file_path}. Expected .xml or .csv")
@@ -547,7 +552,7 @@ class wholebrain_data:
 
         quant_dict = {}
         for channel in ch:
-            quant_df = pd.read_csv(self.quant_paths[channel])
+            quant_df = pd.read_csv(str(self.quant_paths[channel]))
             quant_dict[channel] = quant_df
         # Save quantifications to class attribute for later use
         self.atlas_quantifications = quant_dict

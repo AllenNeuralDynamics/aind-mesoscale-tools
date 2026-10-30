@@ -19,6 +19,9 @@ dynamic = ["version"]
 dependencies = [
     'seaborn>=0.13.2',
     'lxml>=6.0.0',
+    'dask',
+    'universal_pathlib',
+    's3fs',
     'aind-smartspim-transform-utils @ git+https://github.com/AllenNeuralDynamics/aind-smartspim-transform-utils.git'
 ]
 
